@@ -12,6 +12,8 @@ import {
 import styled from "@emotion/styled";
 import { Box } from "@mui/system";
 import { getPurchase, getTransact } from "../../api/axios";
+import ExcelJS from "exceljs";
+
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.common.black,
@@ -72,6 +74,35 @@ function subtotal2(items) {
 const PurchaseReport = () => {
   const [row, setRows] = useState([]);
   const [transactId, setTransactId] = useState();
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  let mm = today.getMonth() + 1;
+  let dd = today.getDate();
+  if (dd < 10) dd = "0" + dd;
+  if (mm < 10) mm = "0" + mm;
+  const formattedToday = dd + "/" + mm + "/" + yyyy;
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Purchase Report");
+
+  const filename = "purchase_report.xlsx";
+  workbook.columns = [
+    { header: "Date", key: "date" },
+    { header: "Item", key: "desc" },
+    { header: "Brand", key: "brand" },
+    { header: "Qty", key: "quantity" },
+    { header: "Cost/unit", key: "price" },
+    { header: "Selling Price/unit", key: "sellprice" },
+    { header: "Total Cost", key: "totalprice" },
+  ];
+  // Add a row for the company name
+  const companyNameRow = worksheet.addRow(["Company Name"]);
+  companyNameRow.font = { bold: true };
+
+  // Add a row for the date
+  const dateRow = worksheet.addRow([new Date().toLocaleString()]);
+  dateRow.font = { bold: true };
+
+  worksheet.getCell("A4").value = new Date();
   const getId = async () => {
     const { data } = await getTransact();
     setTransactId(
@@ -97,20 +128,64 @@ const PurchaseReport = () => {
       transactId
     );
   });
+  console.log(rows);
   const invoiceSubtotal = subtotal(rows);
   const invoiceSubtotal2 = subtotal2(rows);
   useEffect(() => {
     getAllItems();
     getId();
   }, []);
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  let mm = today.getMonth() + 1;
-  let dd = today.getDate();
-  if (dd < 10) dd = "0" + dd;
-  if (mm < 10) mm = "0" + mm;
-  const formattedToday = dd + "/" + mm + "/" + yyyy;
 
+  const headers = worksheet.addRow([]);
+  headers.getCell("A").value = "Date";
+  headers.getCell("B").value = "Name";
+  headers.getCell("C").value = "Brand";
+  headers.getCell("D").value = "Qty";
+  headers.getCell("E").value = "Cost/unit";
+  headers.getCell("F").value = "Selling Price/unit";
+  headers.getCell("G").value = "Total Cost";
+
+  rows.forEach((item, index) => {
+    const row = worksheet.getRow(index + 7);
+    row.values = [
+      item.date,
+      item.desc,
+      item.brand,
+      item.unit,
+      item.price,
+      item.sellPrice,
+      item.totalprice,
+    ];
+
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+  });
+
+  const totalRow = worksheet.addRow([]);
+  totalRow.getCell("A").value = "Total";
+  totalRow.getCell("F").value = { formula: `SUM(F7:F${rows.length + 6})` };
+  totalRow.getCell("G").value = { formula: `SUM(G7:G${rows.length + 6})` };
+  totalRow.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  const downloadReport = async () => {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+  console.log(rows);
   return (
     <Box>
       <TableContainer component={Paper}>
@@ -178,6 +253,7 @@ const PurchaseReport = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <button onClick={downloadReport}>Download Report</button>
     </Box>
   );
 };

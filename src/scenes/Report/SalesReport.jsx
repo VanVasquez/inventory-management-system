@@ -12,6 +12,8 @@ import {
 import styled from "@emotion/styled";
 import { Box } from "@mui/system";
 import { getSales } from "../../api/axios";
+import ExcelJS from "exceljs";
+
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.common.black,
@@ -63,6 +65,35 @@ function subtotal2(items) {
 
 const SalesReport = () => {
   const [row, setRows] = useState([]);
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  let mm = today.getMonth() + 1;
+  let dd = today.getDate();
+  if (dd < 10) dd = "0" + dd;
+  if (mm < 10) mm = "0" + mm;
+  const formattedToday = dd + "/" + mm + "/" + yyyy;
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Sales Report");
+
+  const filename = "sales_report.xlsx";
+  workbook.columns = [
+    { header: "Item", key: "desc" },
+    { header: "Brand", key: "brand" },
+    { header: "Qty", key: "unit" },
+    { header: "Cost/unit", key: "price" },
+    { header: "Selling Price/unit", key: "sellPrice" },
+    { header: "Total Cost", key: "totalprice" },
+    { header: "Total Sales", key: "totalsaleprice" },
+  ];
+  // Add a row for the company name
+  const companyNameRow = worksheet.addRow(["Company Name"]);
+  companyNameRow.font = { bold: true };
+
+  // Add a row for the date
+  const dateRow = worksheet.addRow([new Date().toLocaleString()]);
+  dateRow.font = { bold: true };
+
+  worksheet.getCell("A4").value = new Date();
   const getAllItems = async () => {
     const { data } = await getSales();
     console.log(data);
@@ -78,6 +109,7 @@ const SalesReport = () => {
       r.totalPrice
     );
   });
+  console.log(rows);
   const result = rows.reduce((acc, curr) => {
     const index = acc.findIndex(
       (item) => item.desc === curr.desc && item.brand === curr.brand
@@ -98,14 +130,55 @@ const SalesReport = () => {
   useEffect(() => {
     getAllItems();
   }, []);
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  let mm = today.getMonth() + 1;
-  let dd = today.getDate();
-  if (dd < 10) dd = "0" + dd;
-  if (mm < 10) mm = "0" + mm;
-  const formattedToday = dd + "/" + mm + "/" + yyyy;
+  const headers = worksheet.addRow([]);
+  headers.getCell("A").value = "Name";
+  headers.getCell("B").value = "Brand";
+  headers.getCell("C").value = "Qty";
+  headers.getCell("D").value = "Cost/unit";
+  headers.getCell("E").value = "Selling Price/unit";
+  headers.getCell("F").value = "Total Cost";
+  headers.getCell("G").value = "Total Sale";
 
+  rows.forEach((item, index) => {
+    const row = worksheet.getRow(index + 7);
+    row.values = [
+      item.desc,
+      item.brand,
+      item.unit,
+      item.price,
+      item.sellPrice,
+      item.totalprice,
+      item.totalsaleprice,
+    ];
+
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+  });
+
+  const totalRow = worksheet.addRow([]);
+  totalRow.getCell("A").value = "Total";
+  totalRow.getCell("F").value = { formula: `SUM(F7:F${rows.length + 6})` };
+  totalRow.getCell("G").value = { formula: `SUM(G7:G${rows.length + 6})` };
+  totalRow.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  const downloadReport = async () => {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
   return (
     <Box>
       <TableContainer component={Paper}>
@@ -169,6 +242,7 @@ const SalesReport = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <button onClick={downloadReport}>Download Report</button>
     </Box>
   );
 };
