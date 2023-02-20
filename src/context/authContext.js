@@ -30,7 +30,6 @@ function AuthProvider({ children }) {
         return response;
       })
       .catch((error) => {
-        console.error(error);
         throw error;
       });
   };
@@ -47,7 +46,6 @@ function AuthProvider({ children }) {
         return response;
       })
       .catch((error) => {
-        console.error(error);
         throw error;
       });
   };

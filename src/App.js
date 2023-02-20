@@ -27,7 +27,6 @@ function App() {
   if (loading) {
     return <div>Loading...</div>;
   }
-  console.log(user);
   return (
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>

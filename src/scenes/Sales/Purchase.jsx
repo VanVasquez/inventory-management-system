@@ -18,6 +18,8 @@ import {
   getAllItem,
   getAPurchase,
   newTransact,
+  updateItem,
+  updatePurchaseItem,
 } from "../../api/axios";
 import { tokens } from "../../theme";
 
@@ -49,8 +51,7 @@ const Purchase = () => {
   const handleClose = () => setOpen(false);
 
   const [order, setOrder] = useState(row.length === 0 ? false : true);
-  console.log(row.length === 0);
-  console.log(row);
+
   useEffect(() => {
     const getPurchase = async () => {
       await getAPurchase().then((res) => {
@@ -59,7 +60,6 @@ const Purchase = () => {
     };
     getPurchase();
   }, []);
-  console.log(row);
   useEffect(() => {
     const getItems = async () => {
       await getAllItem().then((res) => {
@@ -106,7 +106,7 @@ const Purchase = () => {
         const price = item.price;
         const sellingPrice = item.sellingPrice;
         const totalPrice = quantity * sellingPrice;
-        if (quantity >= item.quantity) return setError("Insufficient Items");
+        if (quantity > item.quantity) return setError("Insufficient Items");
         if (name === item.name && brand === item.brand) {
           await addPurchase({
             name,

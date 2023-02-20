@@ -134,7 +134,6 @@ const SalesReport = () => {
     );
   });
 
-  console.log(rows);
   const invoiceSubtotal = subtotal(rows);
   const submitItem = async (event) => {
     event.preventDefault();
@@ -152,10 +151,7 @@ const SalesReport = () => {
       };
       getItems();
       downloadReport();
-      console.log(rows);
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) {}
   };
   const headers = worksheet.addRow([]);
   headers.getCell("A").value = "Items";

@@ -33,6 +33,10 @@ export function addToLog(item) {
 export function updateItem(item) {
   return axios.put(`${url}/api/inventory/${item.id}`, item);
 }
+export function updatePurchaseItem(item) {
+  console.log(item);
+  return axios.put(`${url}/api/inventory/purchase/${item.id}`, item);
+}
 
 export function updateToLog(item) {
   return axios.put(`${url}/api/inventory/logs/${item.id}`, item);

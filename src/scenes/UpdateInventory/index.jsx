@@ -66,7 +66,6 @@ const UpdateInventory = () => {
     const category = data.get("category").toUpperCase();
     const price = data.get("price");
     const sellPrice = data.get("sellPrice");
-    console.log(select);
     try {
       setError("");
       setLoading(true);
@@ -153,7 +152,6 @@ const UpdateInventory = () => {
     };
     getItems();
   };
-  console.log(select);
   return (
     <Box m={"0 20px 0 20px"}>
       <Typography
