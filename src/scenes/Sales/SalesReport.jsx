@@ -15,9 +15,7 @@ import { Box } from "@mui/system";
 import {
   addSales,
   clearLog,
-  getAllItem,
   getAPurchase,
-  getInventory,
   getTransact,
   updateTransact,
 } from "../../api/axios";
@@ -92,9 +90,11 @@ const SalesReport = () => {
         setRows(res.data);
       });
     };
+
     getId();
     getItems();
   }, []);
+
   const today = new Date();
   const yyyy = today.getFullYear();
   let mm = today.getMonth() + 1;
@@ -103,9 +103,8 @@ const SalesReport = () => {
   if (mm < 10) mm = "0" + mm;
   const formattedToday = dd + "/" + mm + "/" + yyyy;
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Inventory Report");
-
-  const filename = "inventory_report.xlsx";
+  const worksheet = workbook.addWorksheet("Sales Report");
+  const filename = "user_report.xlsx";
   workbook.columns = [
     { header: "Item", key: "desc" },
     { header: "Brand", key: "brand" },
@@ -115,13 +114,12 @@ const SalesReport = () => {
     { header: "Total", key: "totalprice" },
   ];
   // Add a row for the date
-  const dateRow = worksheet.addRow([new Date().toLocaleString()]);
-  dateRow.font = { bold: true };
+  worksheet.getCell("A1").value = "Date: ";
+  worksheet.getCell("B1").value = new Date();
 
-  const transact = worksheet.addRow("Transaction no: " + transactId);
-  transact.font = { bold: true };
-
-  worksheet.getCell("A4").value = new Date();
+  worksheet.getCell("A3").value = "Transaction No: ";
+  worksheet.getCell("B3").value = transactId;
+  worksheet.getCell("A4");
   const rows = row.map((r) => {
     return createRow(
       r.item,
@@ -162,13 +160,13 @@ const SalesReport = () => {
   headers.getCell("F").value = "Total";
 
   rows.forEach((item, index) => {
-    const row = worksheet.getRow(index + 7);
+    const row = worksheet.getRow(index + 6);
     row.values = [
       item.desc,
       item.brand,
       item.category,
       item.price,
-      item.sellPrice,
+      item.unit,
       item.totalprice,
     ];
 
@@ -179,7 +177,7 @@ const SalesReport = () => {
 
   const totalRow = worksheet.addRow([]);
   totalRow.getCell("A").value = "Total";
-  totalRow.getCell("F").value = { formula: `SUM(F7:F${rows.length + 6})` };
+  totalRow.getCell("F").value = { formula: `SUM(F6:F${rows.length + 5})` };
   totalRow.eachCell((cell) => {
     cell.font = { bold: true };
     cell.alignment = { vertical: "middle", horizontal: "center" };
