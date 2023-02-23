@@ -46,10 +46,19 @@ function priceRow(qty, unit) {
   return qty * unit;
 }
 
-function createRow(desc, brand, unit, sellPrice, price) {
+function createRow(desc, brand, unit, sellPrice, price, date) {
   const totalprice = priceRow(price, unit);
   const totalsaleprice = priceRow(sellPrice, unit);
-  return { desc, brand, unit, price, sellPrice, totalprice, totalsaleprice };
+  return {
+    desc,
+    brand,
+    unit,
+    price,
+    sellPrice,
+    totalprice,
+    date,
+    totalsaleprice,
+  };
 }
 
 function subtotal(items) {
@@ -65,13 +74,10 @@ function subtotal2(items) {
 
 const SalesReport = () => {
   const [row, setRows] = useState([]);
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  let mm = today.getMonth() + 1;
-  let dd = today.getDate();
-  if (dd < 10) dd = "0" + dd;
-  if (mm < 10) mm = "0" + mm;
-  const formattedToday = dd + "/" + mm + "/" + yyyy;
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [filteredInventoryData, setFilteredInventoryData] = useState([]);
+
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Sales Report");
 
@@ -89,14 +95,19 @@ const SalesReport = () => {
   const companyNameRow = worksheet.addRow(["Company Name"]);
   companyNameRow.font = { bold: true };
 
-  // Add a row for the date
-  const dateRow = worksheet.addRow([new Date().toLocaleString()]);
-  dateRow.font = { bold: true };
+  const titleNameRow = worksheet.addRow(["Sales Report"]);
+  titleNameRow.font = { bold: true };
 
-  worksheet.getCell("A4").value = new Date();
+  // Add a row for the date
+  worksheet.getCell("A3").value = "As of: ";
+  worksheet.getCell("B3").value = new Date().toLocaleString();
+
+  worksheet.getCell("A4").value = "Date from: ";
+  worksheet.getCell("B4").value = startDate;
+  worksheet.getCell("C4").value = "to: ";
+  worksheet.getCell("D4").value = endDate;
   const getAllItems = async () => {
     const { data } = await getSales();
-    console.log(data);
     setRows(data);
   };
   const rows = row.map((r) => {
@@ -106,10 +117,11 @@ const SalesReport = () => {
       r.quantity,
       r.sellPrice,
       r.price,
-      r.totalPrice
+      r.dateFormatted,
+      r.totalPrice,
+      r.dateFormatted
     );
   });
-
   const result = rows.reduce((acc, curr) => {
     const index = acc.findIndex(
       (item) => item.desc === curr.desc && item.brand === curr.brand
@@ -124,12 +136,30 @@ const SalesReport = () => {
     return acc;
   }, []);
 
-  console.log(result);
-  const invoiceSubtotal = subtotal(result);
-  const invoiceSubtotal2 = subtotal2(result);
+  const handleFilterByDateRange = (startDate, endDate) => {
+    if (!startDate || !endDate) {
+      setFilteredInventoryData(result);
+    } else {
+      const filteredData = result.filter((item) => {
+        const itemDate = new Date(item.date).toLocaleDateString();
+        return (
+          itemDate >= new Date(startDate).toLocaleDateString() &&
+          itemDate <= new Date(endDate).toLocaleDateString()
+        );
+      });
+      setFilteredInventoryData(filteredData);
+    }
+  };
+  useEffect(() => {
+    handleFilterByDateRange(startDate, endDate);
+  }, []);
+  const invoiceSubtotal = subtotal(filteredInventoryData);
+  const invoiceSubtotal2 = subtotal2(filteredInventoryData);
   useEffect(() => {
     getAllItems();
   }, []);
+  worksheet.addRow([]);
+  worksheet.addRow([]);
   const headers = worksheet.addRow([]);
   headers.getCell("A").value = "Name";
   headers.getCell("B").value = "Brand";
@@ -138,9 +168,8 @@ const SalesReport = () => {
   headers.getCell("E").value = "Selling Price/unit";
   headers.getCell("F").value = "Total Cost";
   headers.getCell("G").value = "Total Sale";
-
-  rows.forEach((item, index) => {
-    const row = worksheet.getRow(index + 7);
+  filteredInventoryData.forEach((item, index) => {
+    const row = worksheet.getRow(index + 8);
     row.values = [
       item.desc,
       item.brand,
@@ -155,11 +184,12 @@ const SalesReport = () => {
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
   });
+  worksheet.addRow([]);
 
   const totalRow = worksheet.addRow([]);
   totalRow.getCell("A").value = "Total";
-  totalRow.getCell("F").value = { formula: `SUM(F7:F${rows.length + 6})` };
-  totalRow.getCell("G").value = { formula: `SUM(G7:G${rows.length + 6})` };
+  totalRow.getCell("F").value = { formula: `SUM(F8:F${rows.length + 7})` };
+  totalRow.getCell("G").value = { formula: `SUM(G8:G${rows.length + 7})` };
   totalRow.eachCell((cell) => {
     cell.font = { bold: true };
     cell.alignment = { vertical: "middle", horizontal: "center" };
@@ -179,6 +209,7 @@ const SalesReport = () => {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   };
+  console.log(filteredInventoryData);
   return (
     <Box>
       <TableContainer component={Paper}>
@@ -196,7 +227,24 @@ const SalesReport = () => {
             </StyledTableRow>
             <StyledTableRow>
               <StyledTableCell colSpan={6} align="left">
-                Date from : {formattedToday} to: {formattedToday}
+                Date from :{" "}
+                <input
+                  type="date"
+                  onChange={(e) => {
+                    const inputDate = new Date(e.target.value);
+                    setStartDate(inputDate);
+                    handleFilterByDateRange(e.target.value, endDate);
+                  }}
+                />{" "}
+                to:{" "}
+                <input
+                  type="date"
+                  onChange={(e) => {
+                    const inputDate = new Date(e.target.value);
+                    setEndDate(inputDate);
+                    handleFilterByDateRange(startDate, e.target.value);
+                  }}
+                />
               </StyledTableCell>
               <StyledTableCell></StyledTableCell>
             </StyledTableRow>
@@ -213,7 +261,7 @@ const SalesReport = () => {
             </StyledTableRow>
           </TableHead>
           <TableBody>
-            {result.map((row) => (
+            {filteredInventoryData.map((row) => (
               <StyledTableRow key={row.desc}>
                 <StyledTableCell>{row.desc}</StyledTableCell>
                 <StyledTableCell>{row.brand}</StyledTableCell>

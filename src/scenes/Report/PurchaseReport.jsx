@@ -73,14 +73,11 @@ function subtotal2(items) {
 
 const PurchaseReport = () => {
   const [row, setRows] = useState([]);
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
   const [transactId, setTransactId] = useState();
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  let mm = today.getMonth() + 1;
-  let dd = today.getDate();
-  if (dd < 10) dd = "0" + dd;
-  if (mm < 10) mm = "0" + mm;
-  const formattedToday = dd + "/" + mm + "/" + yyyy;
+  const [filteredInventoryData, setFilteredInventoryData] = useState([]);
+
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Purchase Report");
 
@@ -98,11 +95,16 @@ const PurchaseReport = () => {
   const companyNameRow = worksheet.addRow(["Company Name"]);
   companyNameRow.font = { bold: true };
 
+  const titleNameRow = worksheet.addRow(["Purchase Report"]);
+  titleNameRow.font = { bold: true };
   // Add a row for the date
-  const dateRow = worksheet.addRow([new Date().toLocaleString()]);
-  dateRow.font = { bold: true };
+  worksheet.getCell("A3").value = "As of: ";
+  worksheet.getCell("B3").value = new Date().toLocaleString();
 
-  worksheet.getCell("A4").value = new Date();
+  worksheet.getCell("A4").value = "Date from: ";
+  worksheet.getCell("B4").value = startDate;
+  worksheet.getCell("C4").value = "to: ";
+  worksheet.getCell("D4").value = endDate;
   const getId = async () => {
     const { data } = await getTransact();
     setTransactId(
@@ -113,7 +115,6 @@ const PurchaseReport = () => {
   };
   const getAllItems = async () => {
     const { data } = await getPurchase();
-    console.log(data);
     setRows(data);
   };
   const rows = row.map((r) => {
@@ -128,14 +129,33 @@ const PurchaseReport = () => {
       transactId
     );
   });
-  console.log(rows);
-  const invoiceSubtotal = subtotal(rows);
-  const invoiceSubtotal2 = subtotal2(rows);
+  const handleFilterByDateRange = (startDate, endDate) => {
+    if (!startDate || !endDate) {
+      setFilteredInventoryData(rows);
+    } else {
+      const filteredData = rows.filter((item) => {
+        const itemDate = new Date(item.date).toLocaleDateString();
+        console.log(itemDate);
+        console.log(new Date(startDate).toLocaleDateString());
+        return (
+          itemDate >= new Date(startDate).toLocaleDateString() &&
+          itemDate <= new Date(endDate).toLocaleDateString()
+        );
+      });
+      setFilteredInventoryData(filteredData);
+    }
+  };
+  useEffect(() => {
+    handleFilterByDateRange(startDate, endDate);
+  }, []);
+  const invoiceSubtotal = subtotal(filteredInventoryData);
+  const invoiceSubtotal2 = subtotal2(filteredInventoryData);
   useEffect(() => {
     getAllItems();
     getId();
   }, []);
 
+  worksheet.addRow([]);
   const headers = worksheet.addRow([]);
   headers.getCell("A").value = "Date";
   headers.getCell("B").value = "Name";
@@ -145,7 +165,7 @@ const PurchaseReport = () => {
   headers.getCell("F").value = "Selling Price/unit";
   headers.getCell("G").value = "Total Cost";
 
-  rows.forEach((item, index) => {
+  filteredInventoryData.forEach((item, index) => {
     const row = worksheet.getRow(index + 7);
     row.values = [
       item.date,
@@ -185,7 +205,6 @@ const PurchaseReport = () => {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   };
-  console.log(rows);
   return (
     <Box>
       <TableContainer component={Paper}>
@@ -208,8 +227,26 @@ const PurchaseReport = () => {
               <StyledTableCell></StyledTableCell>
             </StyledTableRow>
             <StyledTableRow>
+              {" "}
               <StyledTableCell colSpan={6} align="left">
-                Date from : {formattedToday} to: {formattedToday}
+                Date from :{" "}
+                <input
+                  type="date"
+                  onChange={(e) => {
+                    const inputDate = new Date(e.target.value);
+                    setStartDate(inputDate);
+                    handleFilterByDateRange(e.target.value, endDate);
+                  }}
+                />{" "}
+                to:{" "}
+                <input
+                  type="date"
+                  onChange={(e) => {
+                    const inputDate = new Date(e.target.value);
+                    setEndDate(inputDate);
+                    handleFilterByDateRange(startDate, e.target.value);
+                  }}
+                />
               </StyledTableCell>
               <StyledTableCell></StyledTableCell>
             </StyledTableRow>
@@ -226,7 +263,7 @@ const PurchaseReport = () => {
             </StyledTableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {filteredInventoryData.map((row) => (
               <StyledTableRow key={row.id}>
                 <StyledTableCell>{row.date}</StyledTableCell>
                 <StyledTableCell>{row.desc}</StyledTableCell>

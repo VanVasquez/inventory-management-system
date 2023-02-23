@@ -61,21 +61,9 @@ function createRow(desc, brand, unit, price, sellprice, date) {
   };
 }
 
-function subtotal(items) {
-  return items
-    .map(({ totalprice }) => totalprice)
-    .reduce((sum, i) => sum + i, 0);
-}
-
-function subtotal2(items) {
-  return items
-    .map(({ totalsellprice }) => totalsellprice)
-    .reduce((sum, i) => sum + i, 0);
-}
-
 const ActualInventory = () => {
   const [row, setRows] = useState([]);
-  const [date, setDate] = useState();
+  const [date, setDate] = useState(new Date());
   const today = new Date();
   const yyyy = today.getFullYear();
   let mm = today.getMonth() + 1;
@@ -100,11 +88,15 @@ const ActualInventory = () => {
   const companyNameRow = worksheet.addRow(["Company Name"]);
   companyNameRow.font = { bold: true };
 
-  // Add a row for the date
-  const dateRow = worksheet.addRow([new Date().toLocaleString()]);
-  dateRow.font = { bold: true };
+  const titleNameRow = worksheet.addRow(["Actual Inventory Report"]);
+  titleNameRow.font = { bold: true };
 
-  worksheet.getCell("A4").value = new Date();
+  // Add a row for the date
+  worksheet.getCell("A3").value = "As of: ";
+  worksheet.getCell("B3").value = new Date().toLocaleString();
+
+  worksheet.getCell("A4").value = "Date";
+  worksheet.getCell("B4").value = date;
   const rows = row.map((r) => {
     return createRow(
       r.name,
@@ -112,11 +104,9 @@ const ActualInventory = () => {
       r.quantity,
       r.price,
       r.sellingPrice,
-      r.createdAtFormatted
+      r.updatedAtFormatted
     );
   });
-  const invoiceSubtotal = subtotal(rows);
-  const invoiceSubtotal2 = subtotal2(rows);
   useEffect(() => {
     const getAllItems = async () => {
       const { data } = await getAllItem();
@@ -125,7 +115,7 @@ const ActualInventory = () => {
 
     getAllItems();
   }, []);
-
+  worksheet.addRow([]);
   const headers = worksheet.addRow([]);
   headers.getCell("A").value = "Name";
   headers.getCell("B").value = "Brand";
@@ -135,7 +125,19 @@ const ActualInventory = () => {
   headers.getCell("F").value = "Total Cost";
   headers.getCell("G").value = "Total Selling Price";
 
-  rows.forEach((item, index) => {
+  const filteredRows = rows.filter(
+    (row) =>
+      new Date(row.date).toLocaleDateString() === date.toLocaleDateString()
+  );
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    if (dateA > dateB) return 1;
+    if (dateA < dateB) return -1;
+    return 0;
+  });
+  console.log(sortedRows);
+  sortedRows.forEach((item, index) => {
     const row = worksheet.getRow(index + 7);
     row.values = [
       item.desc,
@@ -151,6 +153,7 @@ const ActualInventory = () => {
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
   });
+  worksheet.addRow([]);
 
   const totalRow = worksheet.addRow([]);
   totalRow.getCell("A").value = "Total";
@@ -160,6 +163,20 @@ const ActualInventory = () => {
     cell.font = { bold: true };
     cell.alignment = { vertical: "middle", horizontal: "center" };
   });
+
+  const invoiceSubtotal = subtotal(sortedRows);
+  const invoiceSubtotal2 = subtotal2(sortedRows);
+  function subtotal(items) {
+    return items
+      .map(({ totalprice }) => totalprice)
+      .reduce((sum, i) => sum + i, 0);
+  }
+
+  function subtotal2(items) {
+    return items
+      .map(({ totalsellprice }) => totalsellprice)
+      .reduce((sum, i) => sum + i, 0);
+  }
 
   const downloadReport = async () => {
     const buffer = await workbook.xlsx.writeBuffer();
@@ -192,7 +209,7 @@ const ActualInventory = () => {
             </StyledTableRow>
             <StyledTableRow>
               <StyledTableCell colSpan={6} align="left">
-                As of:{formattedToday}
+                As of:{" " + formattedToday}
               </StyledTableCell>
               <StyledTableCell></StyledTableCell>
             </StyledTableRow>
@@ -202,7 +219,8 @@ const ActualInventory = () => {
                 <input
                   type="date"
                   onChange={(e) => {
-                    setDate(e.target.value);
+                    const inputDate = new Date(e.target.value);
+                    setDate(inputDate);
                   }}
                 />
               </StyledTableCell>
@@ -223,7 +241,7 @@ const ActualInventory = () => {
             </StyledTableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {sortedRows.map((row) => (
               <StyledTableRow key={row.desc}>
                 <StyledTableCell>{row.desc}</StyledTableCell>
                 <StyledTableCell>{row.brand}</StyledTableCell>
