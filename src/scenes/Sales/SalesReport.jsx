@@ -149,6 +149,7 @@ const SalesReport = () => {
       };
       getItems();
       downloadReport();
+      localStorage.setItem("isOpen", false);
     } catch (e) {}
   };
   const headers = worksheet.addRow([]);

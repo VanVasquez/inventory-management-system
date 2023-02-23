@@ -10,7 +10,6 @@ import {
   Typography,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import {
   addPurchase,
@@ -18,8 +17,6 @@ import {
   getAllItem,
   getAPurchase,
   newTransact,
-  updateItem,
-  updatePurchaseItem,
 } from "../../api/axios";
 import { tokens } from "../../theme";
 
@@ -32,6 +29,9 @@ const columns = [
 ];
 
 const Purchase = () => {
+  const [isOpen, setIsOpen] = useState(
+    JSON.parse(localStorage.getItem("isOpen")) || false
+  );
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [select, setSelected] = useState("");
@@ -49,8 +49,6 @@ const Purchase = () => {
     setOpen(true);
   };
   const handleClose = () => setOpen(false);
-
-  const [order, setOrder] = useState(row.length === 0 ? false : true);
 
   useEffect(() => {
     const getPurchase = async () => {
@@ -99,24 +97,19 @@ const Purchase = () => {
       setError("");
       setLoading(true);
       inventory.map(async (item) => {
-        const name = data.get("name").toUpperCase();
-        const brand = data.get("brand").toUpperCase();
-        const quantity = data.get("quantity");
-        const category = item.category;
-        const price = item.price;
-        const sellingPrice = item.sellingPrice;
-        const totalPrice = quantity * sellingPrice;
-        if (quantity > item.quantity) return setError("Insufficient Items");
-        if (name === item.name && brand === item.brand) {
-          await addPurchase({
-            name,
-            brand,
-            category,
-            price,
-            sellingPrice,
-            quantity,
-            totalPrice,
-          });
+        const purchase = {
+          name: data.get("name").toUpperCase(),
+          brand: data.get("brand").toUpperCase(),
+          quantity: data.get("quantity"),
+          category: item.category,
+          price: item.price,
+          sellingPrice: item.sellingPrice,
+          totalPrice: quantity * item.sellingPrice,
+        };
+        if (purchase.quantity > item.quantity)
+          return setError("Insufficient Items");
+        if (purchase.name === item.name && purchase.brand === item.brand) {
+          await addPurchase(purchase);
           const getItems = async () => {
             await getAPurchase().then((res) => {
               setRows(res.data);
@@ -134,12 +127,14 @@ const Purchase = () => {
   const clearData = async () => {
     try {
       await clearLog();
-      setOrder(false);
+      localStorage.setItem("isOpen", false);
+      setIsOpen(false);
     } catch (e) {
       setError(e.message);
     }
   };
   const createPurchase = async (event) => {
+    console.log("clicked");
     event.preventDefault();
     try {
       await newTransact({ totalSum: 0 });
@@ -149,7 +144,8 @@ const Purchase = () => {
         });
       };
       getItems();
-      setOrder(true);
+      localStorage.setItem("isOpen", true);
+      setIsOpen(true);
     } catch (err) {
       setError(err.message);
     }
@@ -158,8 +154,8 @@ const Purchase = () => {
   return (
     <>
       <Box>
-        {!order && <Button onClick={createPurchase}>New</Button>}
-        {order && (
+        {!isOpen && <Button onClick={createPurchase}>New</Button>}
+        {isOpen && (
           <Box
             m="0 0 0 0"
             height="70vh"
@@ -192,8 +188,8 @@ const Purchase = () => {
             <DataGrid getRowId={(row) => row.id} rows={row} columns={columns} />
           </Box>
         )}
-        {order && <Button onClick={handleOpen}>Add </Button>}
-        {order && <Button onClick={clearData}>Clear </Button>}
+        {isOpen && <Button onClick={handleOpen}>Add </Button>}
+        {isOpen && <Button onClick={clearData}>Clear </Button>}
       </Box>
       <Box></Box>
       <Modal

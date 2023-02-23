@@ -109,6 +109,7 @@ const SalesReport = () => {
       r.totalPrice
     );
   });
+
   const result = rows.reduce((acc, curr) => {
     const index = acc.findIndex(
       (item) => item.desc === curr.desc && item.brand === curr.brand
