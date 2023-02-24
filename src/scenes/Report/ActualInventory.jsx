@@ -127,7 +127,7 @@ const ActualInventory = () => {
 
   const filteredRows = rows.filter(
     (row) =>
-      new Date(row.date).toLocaleDateString() === date.toLocaleDateString()
+      new Date(row.date).toLocaleDateString() <= date.toLocaleDateString()
   );
   const sortedRows = [...filteredRows].sort((a, b) => {
     const dateA = new Date(a.date);

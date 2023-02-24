@@ -93,7 +93,7 @@ const Sidebar = ({ selectedd }) => {
                   ml="15px"
                 >
                   <Typography variant="h3" color={colors.grey[100]}>
-                    {"Hi" + user.user_lastname}
+                    {"Hi " + user.user_lastname}
                   </Typography>
                   <IconButton onClick={() => setIsCollapsed(!isCollapsed)}>
                     <MenuOutlinedIcon />
